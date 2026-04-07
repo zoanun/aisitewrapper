@@ -14,8 +14,9 @@ async function renderTabs() {
     tab.className = 'tab' + (site.id === currentSiteId ? ' active' : '');
 
     const favicon = document.createElement('img');
-    const hostname = new URL(site.url).hostname;
-    favicon.src = `https://${hostname}/favicon.ico`;
+    let hostname;
+    try { hostname = new URL(site.url).hostname; } catch { hostname = ''; }
+    favicon.src = hostname ? `https://${hostname}/favicon.ico` : '';
     favicon.alt = '';
     favicon.onerror = () => {
       if (!favicon.dataset.fallback) {

@@ -39,8 +39,9 @@ function render() {
     card.draggable = true;
     card.dataset.id = site.id;
 
-    const hostname = new URL(site.url).hostname;
-    const faviconUrl = `https://${hostname}/favicon.ico`;
+    let hostname;
+    try { hostname = new URL(site.url).hostname; } catch { hostname = ''; }
+    const faviconUrl = hostname ? `https://${hostname}/favicon.ico` : '';
     const isDefault = site.id === defaultSiteId;
 
     const header = document.createElement('div');
@@ -192,7 +193,12 @@ function openModal(site) {
     const name = nameInput.value.trim();
     const url = urlInput.value.trim();
     if (!name || !url) return;
-    try { new URL(url); } catch { alert('Please enter a valid URL'); return; }
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        alert('Only http:// and https:// URLs are allowed'); return;
+      }
+    } catch { alert('Please enter a valid URL'); return; }
 
     if (site) {
       site.name = name;

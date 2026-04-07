@@ -27,30 +27,8 @@ function storeSet(key, value) {
   writeStore(data);
 }
 
-// --- Config: reuse DEFAULT_SITES ---
-const DEFAULT_SITES = [
-  { id: 'deepseek', name: 'DeepSeek', url: 'https://chat.deepseek.com', enabled: true, builtin: true },
-  { id: 'doubao', name: '豆包', url: 'https://doubao.com', enabled: true, builtin: true },
-  { id: 'tongyi', name: '千问', url: 'https://chat.qwen.ai', enabled: true, builtin: true },
-  { id: 'yuanbao', name: '元宝', url: 'https://yuanbao.tencent.com', enabled: true, builtin: true },
-  { id: 'glm', name: '智谱清言', url: 'https://chatglm.cn', enabled: true, builtin: true },
-  { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com', enabled: true, builtin: true },
-  { id: 'gemini', name: 'Gemini', url: 'https://aistudio.google.com/', enabled: true, builtin: true },
-  { id: 'claude', name: 'Claude', url: 'https://claude.ai', enabled: true, builtin: true },
-  { id: 'kimi', name: 'Kimi', url: 'https://kimi.moonshot.cn', enabled: false, builtin: true },
-  { id: 'wenxin', name: '文心一言', url: 'https://yiyan.baidu.com', enabled: false, builtin: true },
-  { id: 'spark', name: '讯飞星火', url: 'https://xinghuo.xfyun.cn', enabled: false, builtin: true },
-  { id: 'tiangong', name: '天工', url: 'https://tiangong.cn', enabled: false, builtin: true },
-  { id: 'hailuo', name: '海螺', url: 'https://hailuoai.com', enabled: false, builtin: true },
-  { id: 'perplexity', name: 'Perplexity', url: 'https://perplexity.ai', enabled: false, builtin: true },
-  { id: 'grok', name: 'Grok', url: 'https://grok.com', enabled: false, builtin: true },
-  { id: 'copilot', name: 'Copilot', url: 'https://copilot.microsoft.com', enabled: false, builtin: true },
-  { id: 'mistral', name: 'Mistral', url: 'https://chat.mistral.ai', enabled: false, builtin: true },
-  { id: 'huggingchat', name: 'HuggingChat', url: 'https://huggingface.co/chat', enabled: false, builtin: true },
-  { id: 'poe', name: 'Poe', url: 'https://poe.com', enabled: false, builtin: true }
-];
-
-const DEFAULT_WINDOW = { width: 1280, height: 800 };
+// --- Config: import shared site list from lib/config.js ---
+const { DEFAULT_SITES, DEFAULT_WINDOW } = require('../lib/config.js');
 
 function loadSites() {
   const sites = storeGet('sites');
@@ -150,9 +128,35 @@ function createWindow() {
     siteView = null;
   });
 
-  // Open external links in default browser
+  // Handle new window requests (OAuth popups stay in-app, others go to browser)
+  const OAUTH_DOMAINS = [
+    'accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com',
+    'github.com', 'auth0.com', 'login.live.com'
+  ];
+
   siteView.webContents.setWindowOpenHandler(({ url }) => {
-    require('electron').shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { action: 'deny' };
+      }
+      // Allow OAuth popups to open as Electron windows
+      if (OAUTH_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))) {
+        return { action: 'allow' };
+      }
+      // Check if same origin as current site (likely auth-related)
+      const currentUrl = siteView.webContents.getURL();
+      if (currentUrl) {
+        try {
+          const currentOrigin = new URL(currentUrl).origin;
+          if (parsed.origin === currentOrigin) {
+            return { action: 'allow' };
+          }
+        } catch {}
+      }
+      // External link — open in system browser
+      require('electron').shell.openExternal(url);
+    } catch {}
     return { action: 'deny' };
   });
 }
@@ -171,6 +175,11 @@ ipcMain.handle('switch-tab', (_e, siteId) => {
   const sites = loadSites();
   const site = sites.find(s => s.id === siteId);
   if (!site || !siteView) return { ok: false };
+  // Validate URL scheme before navigating
+  try {
+    const parsed = new URL(site.url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return { ok: false };
+  } catch { return { ok: false }; }
   currentSiteId = siteId;
   storeSet('lastActiveTab', siteId);
   siteView.webContents.loadURL(site.url);
