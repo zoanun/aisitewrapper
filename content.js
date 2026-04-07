@@ -8,8 +8,9 @@
   }
   if (!resp || !resp.isAiwrap) return;
 
-  // Skip extension pages
-  if (location.protocol === 'chrome-extension:') return;
+  // Skip settings/setup pages (error page is injected manually by background.js)
+  if (location.protocol === 'chrome-extension:' &&
+      !location.pathname.includes('error.html')) return;
 
   // Helper to safely send messages (extension may be reloaded at any time)
   function safeSendMessage(msg) {
@@ -79,14 +80,20 @@
 
       const favicon = document.createElement('img');
       const hostname = new URL(site.url).hostname;
-      favicon.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+      favicon.src = `https://${hostname}/favicon.ico`;
       favicon.alt = '';
       favicon.onerror = () => {
-        // Fallback: replace with first letter
-        const letter = document.createElement('span');
-        letter.className = 'aiwrap-tab-letter';
-        letter.textContent = site.name.charAt(0);
-        favicon.replaceWith(letter);
+        // Fallback 1: try Google favicon service
+        if (!favicon.dataset.fallback) {
+          favicon.dataset.fallback = '1';
+          favicon.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+        } else {
+          // Fallback 2: replace with first letter
+          const letter = document.createElement('span');
+          letter.className = 'aiwrap-tab-letter';
+          letter.textContent = site.name.charAt(0);
+          favicon.replaceWith(letter);
+        }
       };
 
       const name = document.createElement('span');
@@ -96,6 +103,9 @@
       tab.appendChild(name);
 
       tab.addEventListener('click', () => {
+        if (site.id !== activeSiteId) {
+          showLoading(site.name);
+        }
         safeSendMessage({ type: 'SWITCH_TAB', siteId: site.id });
       });
 
@@ -141,6 +151,35 @@
       contextMenu.remove();
       contextMenu = null;
     }
+  }
+
+  function showLoading(name) {
+    const existing = document.getElementById('aiwrap-loading');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'aiwrap-loading';
+    const spinner = document.createElement('div');
+    spinner.className = 'aiwrap-spinner';
+    const text = document.createElement('div');
+    text.className = 'aiwrap-loading-text';
+    text.textContent = `Loading ${name}...`;
+    const hint = document.createElement('div');
+    hint.className = 'aiwrap-loading-hint';
+    hint.textContent = 'Press ESC to cancel';
+    overlay.appendChild(spinner);
+    overlay.appendChild(text);
+    overlay.appendChild(hint);
+    document.documentElement.appendChild(overlay);
+
+    const onEsc = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        document.removeEventListener('keydown', onEsc);
+        overlay.remove();
+        safeSendMessage({ type: 'CANCEL_NAV' });
+      }
+    };
+    document.addEventListener('keydown', onEsc);
   }
 
   document.addEventListener('click', removeContextMenu);

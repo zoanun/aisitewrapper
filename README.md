@@ -1,4 +1,4 @@
-# AIWrap
+# AI Site Wrapper
 
 Aggregate AI chat websites into one window. Switch between multiple AI assistants instantly.
 
@@ -39,7 +39,7 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 
 ## Usage
 
-1. Click the AIWrap icon in the Chrome toolbar to open the AI hub window
+1. Click the AI Site Wrapper icon in the Chrome toolbar to open the AI hub window
 2. Hover near the top edge of the page to reveal the tab bar
 3. Click any tab to switch between AI sites
 4. Right-click a tab for options (hide, refresh)
@@ -47,7 +47,7 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 
 ## Privacy
 
-AIWrap does not collect or transmit any personal data. All settings are stored locally. See [PRIVACY.md](PRIVACY.md) for details.
+AI Site Wrapper does not collect or transmit any personal data. All settings are stored locally. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## License
 

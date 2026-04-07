@@ -1,14 +1,14 @@
-# Privacy Policy - AIWrap
+# Privacy Policy - AI Site Wrapper
 
 **Last updated:** 2026-04-07
 
 ## Overview
 
-AIWrap is a browser extension that aggregates AI chat websites into a single window for convenient access. We are committed to protecting your privacy.
+AI Site Wrapper is a browser extension that aggregates AI chat websites into a single window for convenient access. We are committed to protecting your privacy.
 
 ## Data Collection
 
-**AIWrap does not collect, transmit, or store any personal data on external servers.**
+**AI Site Wrapper does not collect, transmit, or store any personal data on external servers.**
 
 All data is stored locally on your device using Chrome's built-in storage APIs.
 
@@ -23,19 +23,19 @@ Used to save your preferences locally, including:
 
 ### `tabs`
 Used to:
-- Create and manage tabs within the AIWrap popup window
+- Create and manage tabs within the AI Site Wrapper popup window
 - Navigate between AI chat sites
-- Detect whether a tab belongs to the AIWrap window
+- Detect whether a tab belongs to the AI Site Wrapper window
 
 ### `browsingData`
 Used only when you explicitly click "Clear Cache" in the settings page. This clears cookies, localStorage, and cached data for the specific AI site(s) you choose.
 
 ### Content Scripts (`<all_urls>`)
-A content script runs on pages within the AIWrap popup window to inject the tab bar UI. It only activates inside the AIWrap window and does not run on pages in your normal browser windows.
+A content script runs on pages within the AI Site Wrapper popup window to inject the tab bar UI. It only activates inside the AI Site Wrapper window and does not run on pages in your normal browser windows.
 
 ## Third-Party Services
 
-AIWrap loads website favicons from Google's favicon service (`google.com/s2/favicons`) to display site icons in the tab bar and settings page. No personal data is sent in these requests.
+AI Site Wrapper loads website favicons from Google's favicon service (`google.com/s2/favicons`) to display site icons in the tab bar and settings page. No personal data is sent in these requests.
 
 ## Data Storage
 

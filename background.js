@@ -124,6 +124,54 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
+// Detect page load failure in AIWrap tab — show error page with tab bar
+let previousSiteId = null;
+
+// Catch navigation errors that mean the site is unreachable
+const FATAL_ERRORS = [
+  'net::ERR_CONNECTION_TIMED_OUT',
+  'net::ERR_CONNECTION_REFUSED',
+  'net::ERR_CONNECTION_RESET',
+  'net::ERR_NAME_NOT_RESOLVED',
+  'net::ERR_INTERNET_DISCONNECTED',
+  'net::ERR_ADDRESS_UNREACHABLE',
+  'net::ERR_NETWORK_CHANGED',
+  'net::ERR_SSL_PROTOCOL_ERROR',
+  'net::ERR_CERT_AUTHORITY_INVALID',
+];
+chrome.webNavigation.onErrorOccurred.addListener(async (details) => {
+  await ready;
+  if (details.tabId !== aiwrapTabId || details.frameId !== 0) return;
+  if (details.url.startsWith(chrome.runtime.getURL(''))) return;
+  if (!FATAL_ERRORS.includes(details.error)) return;
+
+  const sites = await loadSites();
+  const site = sites.find(s => s.id === currentSiteId);
+  const name = site ? site.name : '';
+  const url = site ? site.url : '';
+  const errorPage = chrome.runtime.getURL(`app/error.html?name=${encodeURIComponent(name)}&url=${encodeURIComponent(url)}`);
+  try {
+    await chrome.tabs.update(details.tabId, { url: errorPage });
+  } catch {
+    // Tab no longer exists
+    aiwrapTabId = null;
+  }
+});
+
+// Inject content script on extension error page (content_scripts can't match chrome-extension://)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  await ready;
+  if (tabId !== aiwrapTabId) return;
+  if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith(chrome.runtime.getURL('app/error.html'))) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
+    } catch {
+      // Tab may no longer exist
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // All message handlers must wait for state restoration
   ready.then(async () => {
@@ -148,6 +196,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg.type === 'SWITCH_TAB') {
       sendResponse(await handleSwitchTab(msg.siteId, sender.tab));
+      return;
+    }
+    if (msg.type === 'CANCEL_NAV') {
+      // Stop loading and go back to previous site
+      if (previousSiteId) {
+        const sites = await loadSites();
+        const prevSite = sites.find(s => s.id === previousSiteId);
+        if (prevSite) {
+          currentSiteId = previousSiteId;
+          aiwrapTabId = sender.tab?.id || aiwrapTabId;
+          await saveLastActiveTab(currentSiteId);
+          await persistState();
+          try {
+            await chrome.tabs.update(aiwrapTabId, { url: prevSite.url });
+          } catch {}
+        }
+      }
+      sendResponse({ ok: true });
       return;
     }
     if (msg.type === 'OPEN_SETTINGS') {
@@ -187,6 +253,8 @@ async function handleGetTabs() {
   return { sites: enabledSites, currentSiteId };
 }
 
+let navTimeout = null;
+
 async function handleSwitchTab(siteId, senderTab) {
   if (siteId === currentSiteId) return { ok: true };
 
@@ -198,14 +266,37 @@ async function handleSwitchTab(siteId, senderTab) {
   const tabId = aiwrapTabId || senderTab?.id;
   if (!tabId) return { ok: false };
 
-  await chrome.tabs.update(tabId, { url: site.url });
-  aiwrapTabId = tabId;
+  previousSiteId = currentSiteId;
   currentSiteId = siteId;
-
+  aiwrapTabId = tabId;
   await saveLastActiveTab(siteId);
   await persistState();
+  await chrome.tabs.update(tabId, { url: site.url });
+
+  // 15s timeout — if page hasn't loaded, show error page
+  clearTimeout(navTimeout);
+  navTimeout = setTimeout(async () => {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      // If still loading (not complete), it's a timeout
+      if (tab.status === 'loading') {
+        const errorPage = chrome.runtime.getURL(
+          `app/error.html?name=${encodeURIComponent(site.name)}&url=${encodeURIComponent(site.url)}`
+        );
+        await chrome.tabs.update(tabId, { url: errorPage });
+      }
+    } catch {}
+  }, 15000);
+
   return { ok: true };
 }
+
+// Clear timeout when page finishes loading
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (tabId === aiwrapTabId && changeInfo.status === 'complete') {
+    clearTimeout(navTimeout);
+  }
+});
 
 async function handleHideTab(siteId, senderTab) {
   const sites = await loadSites();

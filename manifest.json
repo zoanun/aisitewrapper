@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "AIWrap",
+  "name": "AI Site Wrapper",
   "version": "1.0.0",
   "description": "Aggregate AI chat websites into one window",
   "permissions": [
     "storage",
     "tabs",
-    "browsingData"
+    "browsingData",
+    "scripting",
+    "webNavigation"
   ],
   "background": {
     "service_worker": "background.js"
@@ -20,14 +22,14 @@
     }
   ],
   "action": {
-    "default_title": "AIWrap - Open AI Hub"
+    "default_title": "AI Site Wrapper"
   },
   "icons": {
     "128": "icons/icon128.png"
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*"],
+      "resources": ["icons/*", "app/error.html"],
       "matches": ["<all_urls>"]
     }
   ]

@@ -21,7 +21,7 @@ function render() {
     card.dataset.id = site.id;
 
     const hostname = new URL(site.url).hostname;
-    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+    const faviconUrl = `https://${hostname}/favicon.ico`;
 
     const isDefault = site.id === defaultSiteId;
 
@@ -31,6 +31,14 @@ function render() {
     const favicon = document.createElement('img');
     favicon.src = faviconUrl;
     favicon.alt = '';
+    favicon.onerror = () => {
+      if (!favicon.dataset.fallback) {
+        favicon.dataset.fallback = '1';
+        favicon.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+      } else {
+        favicon.style.display = 'none';
+      }
+    };
 
     const siteName = document.createElement('span');
     siteName.className = 'site-name';
