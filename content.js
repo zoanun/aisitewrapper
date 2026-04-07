@@ -30,14 +30,11 @@
   let contextMenu = null;
 
   async function renderTabs() {
-    const [tabsResp, activeResp] = await Promise.all([
-      chrome.runtime.sendMessage({ type: 'GET_TABS' }),
-      chrome.runtime.sendMessage({ type: 'GET_ACTIVE_TAB' })
-    ]);
+    const tabsResp = await chrome.runtime.sendMessage({ type: 'GET_TABS' });
 
     tabsContainer.innerHTML = '';
     const sites = tabsResp.sites || [];
-    const activeSiteId = activeResp.siteId;
+    const activeSiteId = tabsResp.currentSiteId;
 
     for (const site of sites) {
       const tab = document.createElement('div');
@@ -85,7 +82,7 @@
     refreshItem.className = 'aiwrap-menu-item';
     refreshItem.textContent = 'Refresh Page';
     refreshItem.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'REFRESH_TAB', siteId });
+      chrome.runtime.sendMessage({ type: 'REFRESH_TAB' });
       removeContextMenu();
     });
 
@@ -104,12 +101,6 @@
   }
 
   document.addEventListener('click', removeContextMenu);
-
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'TAB_CHANGED') {
-      renderTabs();
-    }
-  });
 
   renderTabs();
 })();
