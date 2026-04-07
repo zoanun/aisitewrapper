@@ -10,12 +10,13 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 - Hover-to-show tab bar — zero impact on page layout
 - Set a default site to open on launch
 - Loading overlay with spinner when switching sites (press ESC to cancel)
-- Auto-detect connection failures with friendly error page (15s timeout)
+- Auto-detect connection failures with friendly error page
 - Configurable: enable/disable sites, drag to reorder
 - Add custom AI sites
 - Per-site cache clearing
 - Chinese + English error messages
-- Lightweight, no external dependencies
+- Lightweight, no external dependencies (Chrome extension)
+- Desktop app version (Electron) with standalone .exe packaging
 
 ## Supported Sites
 
@@ -34,10 +35,21 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 
 ## Install
 
-### From Chrome Web Store
+### Desktop App (Electron)
+
+Standalone desktop app, no browser required.
+
+1. Clone this repository
+2. Run `npm install`
+3. Run `npm start` to launch
+4. Run `npm run build` to package as an installer (.exe)
+
+### Chrome Extension
+
+#### From Chrome Web Store
 *(Coming soon)*
 
-### Manual Install (Developer Mode)
+#### Manual Install (Developer Mode)
 1. Clone this repository
 2. Open `chrome://extensions/`
 3. Enable "Developer mode"
