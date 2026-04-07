@@ -3,33 +3,44 @@
   const resp = await chrome.runtime.sendMessage({ type: 'IS_AIWRAP_WINDOW' });
   if (!resp || !resp.isAiwrap) return;
 
-  // Skip if already injected or if this is an extension page
-  if (document.getElementById('aiwrap-tabbar')) return;
+  // Skip extension pages
   if (location.protocol === 'chrome-extension:') return;
 
-  document.documentElement.classList.add('aiwrap-active');
-
-  const tabbar = document.createElement('div');
-  tabbar.id = 'aiwrap-tabbar';
-
-  const tabsContainer = document.createElement('div');
-  tabsContainer.className = 'aiwrap-tabs';
-
-  const settingsBtn = document.createElement('div');
-  settingsBtn.className = 'aiwrap-settings-btn';
-  settingsBtn.innerHTML = '&#9881;';
-  settingsBtn.title = 'Settings';
-  settingsBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
-  });
-
-  tabbar.appendChild(tabsContainer);
-  tabbar.appendChild(settingsBtn);
-  document.body.prepend(tabbar);
-
+  let tabbar = null;
+  let tabsContainer = null;
   let contextMenu = null;
 
+  function ensureTabbar() {
+    if (document.getElementById('aiwrap-tabbar')) return;
+
+    document.documentElement.classList.add('aiwrap-active');
+
+    tabbar = document.createElement('div');
+    tabbar.id = 'aiwrap-tabbar';
+
+    tabsContainer = document.createElement('div');
+    tabsContainer.className = 'aiwrap-tabs';
+
+    const settingsBtn = document.createElement('div');
+    settingsBtn.className = 'aiwrap-settings-btn';
+    settingsBtn.innerHTML = '&#9881;';
+    settingsBtn.title = 'Settings';
+    settingsBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
+    });
+
+    tabbar.appendChild(tabsContainer);
+    tabbar.appendChild(settingsBtn);
+
+    if (document.body) {
+      document.body.prepend(tabbar);
+    }
+
+    renderTabs();
+  }
+
   async function renderTabs() {
+    if (!tabsContainer) return;
     const tabsResp = await chrome.runtime.sendMessage({ type: 'GET_TABS' });
 
     tabsContainer.innerHTML = '';
@@ -102,5 +113,15 @@
 
   document.addEventListener('click', removeContextMenu);
 
-  renderTabs();
+  // Initial injection
+  ensureTabbar();
+
+  // Watch for SPA frameworks that replace body content — re-inject if tab bar is removed
+  const observer = new MutationObserver(() => {
+    if (!document.getElementById('aiwrap-tabbar')) {
+      ensureTabbar();
+    }
+  });
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
