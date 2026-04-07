@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AIWrap Setup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .setup {
+      max-width: 520px;
+      text-align: center;
+    }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 32px; font-size: 15px; }
+    .steps { text-align: left; margin-bottom: 32px; }
+    .step {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: flex-start;
+    }
+    .step-num {
+      background: #4a9eff;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .step-text { padding-top: 3px; line-height: 1.5; }
+    .step-text code {
+      background: #2a2a4a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+    .shortcut-box {
+      background: #2a2a4a;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .shortcut-box p { margin-bottom: 8px; font-size: 13px; color: #aaa; }
+    .shortcut-box code {
+      display: block;
+      background: #1a1a2e;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      word-break: break-all;
+      user-select: all;
+    }
+    .btn {
+      padding: 10px 24px;
+      background: #4a9eff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #3a8eef; }
+    #browser-name { font-weight: 600; color: #4a9eff; }
+  </style>
+</head>
+<body>
+  <div class="setup">
+    <h1>Welcome to AIWrap</h1>
+    <p class="subtitle">Your AI websites, one window away</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Detected browser: <span id="browser-name">Chrome</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Create a desktop shortcut with the command below, then pin it to your taskbar for quick access.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Or just click the AIWrap icon in your browser toolbar anytime.</div>
+      </div>
+    </div>
+    <div class="shortcut-box">
+      <p>Shortcut target (click to select, then copy):</p>
+      <code id="shortcut-cmd"></code>
+    </div>
+    <button class="btn" id="start-btn">Open AIWrap Now</button>
+  </div>
+  <script src="setup.js"></script>
+</body>
+</html>
