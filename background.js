@@ -25,7 +25,18 @@ async function restoreState() {
       const win = await chrome.windows.get(result.aiwrapWindowId);
       if (win) {
         aiwrapWindowId = result.aiwrapWindowId;
-        tabMap = result.tabMap || {};
+        // Validate each tab still exists, remove stale entries
+        const saved = result.tabMap || {};
+        tabMap = {};
+        for (const [siteId, tabId] of Object.entries(saved)) {
+          try {
+            await chrome.tabs.get(tabId);
+            tabMap[siteId] = tabId;
+          } catch {
+            // Tab no longer exists, skip it
+          }
+        }
+        await persistState();
       }
     } catch {
       await chrome.storage.session.remove(['aiwrapWindowId', 'tabMap']);
