@@ -6,9 +6,13 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 
 - One-click access to multiple AI chat sites in a single popup window
 - Hover-to-show tab bar — zero impact on page layout
-- Configurable: enable/disable sites, set default, drag to reorder
+- Set a default site to open on launch
+- Loading overlay with spinner when switching sites (press ESC to cancel)
+- Auto-detect connection failures with friendly error page (15s timeout)
+- Configurable: enable/disable sites, drag to reorder
 - Add custom AI sites
 - Per-site cache clearing
+- Chinese + English error messages
 - Lightweight, no external dependencies
 
 ## Supported Sites
@@ -42,8 +46,10 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 1. Click the AI Site Wrapper icon in the Chrome toolbar to open the AI hub window
 2. Hover near the top edge of the page to reveal the tab bar
 3. Click any tab to switch between AI sites
-4. Right-click a tab for options (hide, refresh)
-5. Click the gear icon to open settings
+4. Press ESC during loading to cancel and stay on the current site
+5. Right-click a tab for options (hide, refresh)
+6. Click the gear icon to open settings
+7. Set a default site by clicking the star icon in settings
 
 ## Privacy
 
