@@ -1,2 +1,3 @@
-// Entry point for app mode. Triggers window creation via background.
-chrome.runtime.sendMessage({ type: 'IS_AIWRAP_WINDOW' });
+// Entry point for app mode (--app=chrome-extension://<id>/app/index.html).
+// Sends LAUNCH to background to create the AIWrap window with all tabs.
+chrome.runtime.sendMessage({ type: 'LAUNCH' });

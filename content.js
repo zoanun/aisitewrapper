@@ -45,7 +45,8 @@
       tab.dataset.siteId = site.id;
 
       const favicon = document.createElement('img');
-      favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(site.url).hostname}&sz=32`;
+      const hostname = new URL(site.url).hostname;
+      favicon.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
       favicon.alt = '';
 
       const name = document.createElement('span');
@@ -84,7 +85,7 @@
     refreshItem.className = 'aiwrap-menu-item';
     refreshItem.textContent = 'Refresh Page';
     refreshItem.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'REFRESH_TAB' });
+      chrome.runtime.sendMessage({ type: 'REFRESH_TAB', siteId });
       removeContextMenu();
     });
 

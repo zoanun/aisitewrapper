@@ -18,7 +18,8 @@ function render() {
     card.draggable = true;
     card.dataset.id = site.id;
 
-    const faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(site.url).hostname}&sz=32`;
+    const hostname = new URL(site.url).hostname;
+    const faviconUrl = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
 
     card.innerHTML = `
       <div class="card-header">
@@ -109,6 +110,7 @@ function openModal(site) {
     const name = nameInput.value.trim();
     const url = urlInput.value.trim();
     if (!name || !url) return;
+    try { new URL(url); } catch { alert('Please enter a valid URL (e.g. https://example.com)'); return; }
 
     if (site) {
       site.name = name;
