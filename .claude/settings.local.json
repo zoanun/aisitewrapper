@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:/98-FUN/ai-worker/claude_study/aiwrap/\"*.png)",
+      "Read(//d/98-FUN/ai-worker/claude_study/**)",
+      "Read(//d/98-FUN/ai-worker/**)"
+    ]
+  }
+}
