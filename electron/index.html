@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AI Site Wrapper</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      height: 40px;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+    .tabbar {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      background: #1e1e1e;
+      padding: 0 4px;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    .tabs {
+      display: flex;
+      flex: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-app-region: no-drag;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 40px;
+      color: #aaa;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: background 0.15s, color 0.15s;
+      -webkit-app-region: no-drag;
+    }
+    .tab:hover { background: #2a2a2a; color: #ddd; }
+    .tab.active { color: #fff; border-bottom-color: #4a9eff; }
+    .tab img { width: 16px; height: 16px; border-radius: 2px; }
+    .tab-letter {
+      width: 16px; height: 16px; border-radius: 2px;
+      background: #444; color: #fff; font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .settings-btn {
+      font-size: 18px; color: #888; cursor: pointer;
+      padding: 0 10px; height: 40px;
+      display: flex; align-items: center;
+      -webkit-app-region: no-drag;
+    }
+    .settings-btn:hover { color: #ddd; }
+    .context-menu {
+      position: fixed;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      min-width: 140px;
+      padding: 4px 0;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .menu-item {
+      padding: 8px 16px;
+      color: #ddd;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .menu-item:hover { background: #3a3a3a; }
+  </style>
+</head>
+<body>
+  <div class="tabbar">
+    <div class="tabs" id="tabs"></div>
+    <div class="settings-btn" id="settings-btn" title="Settings">&#9881;</div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>

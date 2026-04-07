@@ -1,0 +1,35 @@
+{
+  "name": "ai-site-wrapper",
+  "version": "1.0.0",
+  "description": "Aggregate AI chat websites into one desktop window",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.aisitewrapper.app",
+    "productName": "AI Site Wrapper",
+    "win": {
+      "target": ["nsis"],
+      "icon": "icons/icon128.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false
+    },
+    "files": [
+      "electron/**/*",
+      "icons/**/*",
+      "settings/settings.css",
+      "!node_modules/**/*"
+    ]
+  }
+}

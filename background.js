@@ -253,8 +253,6 @@ async function handleGetTabs() {
   return { sites: enabledSites, currentSiteId };
 }
 
-let navTimeout = null;
-
 async function handleSwitchTab(siteId, senderTab) {
   if (siteId === currentSiteId) return { ok: true };
 
@@ -273,30 +271,8 @@ async function handleSwitchTab(siteId, senderTab) {
   await persistState();
   await chrome.tabs.update(tabId, { url: site.url });
 
-  // 15s timeout — if page hasn't loaded, show error page
-  clearTimeout(navTimeout);
-  navTimeout = setTimeout(async () => {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      // If still loading (not complete), it's a timeout
-      if (tab.status === 'loading') {
-        const errorPage = chrome.runtime.getURL(
-          `app/error.html?name=${encodeURIComponent(site.name)}&url=${encodeURIComponent(site.url)}`
-        );
-        await chrome.tabs.update(tabId, { url: errorPage });
-      }
-    } catch {}
-  }, 15000);
-
   return { ok: true };
 }
-
-// Clear timeout when page finishes loading
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  if (tabId === aiwrapTabId && changeInfo.status === 'complete') {
-    clearTimeout(navTimeout);
-  }
-});
 
 async function handleHideTab(siteId, senderTab) {
   const sites = await loadSites();
