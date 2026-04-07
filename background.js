@@ -1,7 +1,8 @@
 importScripts('lib/config.js');
 
 let aiwrapWindowId = null;
-let tabMap = {}; // siteId -> chromeTabId (only for tabs already created)
+let aiwrapTabId = null; // single tab in the popup window
+let currentSiteId = null;
 let launching = false;
 
 // Gate all operations behind state restoration
@@ -19,33 +20,31 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 async function restoreState() {
-  const result = await chrome.storage.session.get(['aiwrapWindowId', 'tabMap']);
+  const result = await chrome.storage.session.get(['aiwrapWindowId', 'aiwrapTabId', 'currentSiteId']);
   if (result.aiwrapWindowId) {
     try {
       const win = await chrome.windows.get(result.aiwrapWindowId);
       if (win) {
         aiwrapWindowId = result.aiwrapWindowId;
-        // Validate each tab still exists, remove stale entries
-        const saved = result.tabMap || {};
-        tabMap = {};
-        for (const [siteId, tabId] of Object.entries(saved)) {
+        aiwrapTabId = result.aiwrapTabId || null;
+        currentSiteId = result.currentSiteId || null;
+        // Validate tab still exists
+        if (aiwrapTabId) {
           try {
-            await chrome.tabs.get(tabId);
-            tabMap[siteId] = tabId;
+            await chrome.tabs.get(aiwrapTabId);
           } catch {
-            // Tab no longer exists, skip it
+            aiwrapTabId = null;
           }
         }
-        await persistState();
       }
     } catch {
-      await chrome.storage.session.remove(['aiwrapWindowId', 'tabMap']);
+      await chrome.storage.session.remove(['aiwrapWindowId', 'aiwrapTabId', 'currentSiteId']);
     }
   }
 }
 
 async function persistState() {
-  await chrome.storage.session.set({ aiwrapWindowId, tabMap });
+  await chrome.storage.session.set({ aiwrapWindowId, aiwrapTabId, currentSiteId });
 }
 
 async function handleLaunch() {
@@ -61,7 +60,7 @@ async function handleLaunch() {
         }
       } catch {
         aiwrapWindowId = null;
-        tabMap = {};
+        aiwrapTabId = null;
       }
     }
     await createAiwrapWindow();
@@ -78,7 +77,11 @@ async function createAiwrapWindow() {
 
   if (enabledSites.length === 0) return;
 
-  const startSite = (lastActive && enabledSites.find(s => s.id === lastActive)) || enabledSites[0];
+  const defaultSite = await loadDefaultSite();
+  const startSite =
+    (defaultSite && enabledSites.find(s => s.id === defaultSite)) ||
+    (lastActive && enabledSites.find(s => s.id === lastActive)) ||
+    enabledSites[0];
 
   const win = await chrome.windows.create({
     url: startSite.url,
@@ -90,8 +93,8 @@ async function createAiwrapWindow() {
   });
 
   aiwrapWindowId = win.id;
-  tabMap = {};
-  tabMap[startSite.id] = win.tabs[0].id;
+  aiwrapTabId = win.tabs[0].id;
+  currentSiteId = startSite.id;
 
   await saveLastActiveTab(startSite.id);
   await persistState();
@@ -100,8 +103,9 @@ async function createAiwrapWindow() {
 chrome.windows.onRemoved.addListener(async (windowId) => {
   if (windowId === aiwrapWindowId) {
     aiwrapWindowId = null;
-    tabMap = {};
-    await chrome.storage.session.remove(['aiwrapWindowId', 'tabMap']);
+    aiwrapTabId = null;
+    currentSiteId = null;
+    await chrome.storage.session.remove(['aiwrapWindowId', 'aiwrapTabId', 'currentSiteId']);
   }
 });
 
@@ -120,28 +124,17 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  await ready;
-  if (activeInfo.windowId !== aiwrapWindowId) return;
-  for (const [siteId, chromeTabId] of Object.entries(tabMap)) {
-    if (chromeTabId === activeInfo.tabId) {
-      await saveLastActiveTab(siteId);
-      break;
-    }
-  }
-});
-
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // All message handlers must wait for state restoration
   ready.then(async () => {
     if (msg.type === 'IS_AIWRAP_WINDOW') {
       // Also recover aiwrapWindowId from sender if we lost it
       if (aiwrapWindowId === null && sender.tab?.windowId) {
-        // Check if this window looks like ours (popup type)
         try {
           const win = await chrome.windows.get(sender.tab.windowId);
           if (win.type === 'popup') {
             aiwrapWindowId = win.id;
+            aiwrapTabId = sender.tab.id;
             await persistState();
           }
         } catch {}
@@ -150,7 +143,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return;
     }
     if (msg.type === 'GET_TABS') {
-      sendResponse(await handleGetTabs(sender.tab));
+      sendResponse(await handleGetTabs());
       return;
     }
     if (msg.type === 'SWITCH_TAB') {
@@ -158,25 +151,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return;
     }
     if (msg.type === 'OPEN_SETTINGS') {
-      const wid = aiwrapWindowId || sender.tab?.windowId;
-      if (wid) {
-        chrome.tabs.create({
-          windowId: wid,
-          url: chrome.runtime.getURL('settings/settings.html'),
-          active: true
+      // Navigate the single tab to settings
+      if (aiwrapTabId || sender.tab?.id) {
+        const tabId = aiwrapTabId || sender.tab.id;
+        await chrome.tabs.update(tabId, {
+          url: chrome.runtime.getURL('settings/settings.html')
         });
       }
       sendResponse({ ok: true });
       return;
     }
     if (msg.type === 'REFRESH_TAB') {
-      const chromeTabId = msg.siteId ? tabMap[msg.siteId] : sender.tab?.id;
-      if (chromeTabId) chrome.tabs.reload(chromeTabId);
+      const tabId = aiwrapTabId || sender.tab?.id;
+      if (tabId) chrome.tabs.reload(tabId);
       sendResponse({ ok: true });
       return;
     }
     if (msg.type === 'HIDE_TAB') {
-      sendResponse(await handleHideTab(msg.siteId));
+      sendResponse(await handleHideTab(msg.siteId, sender.tab));
       return;
     }
     if (msg.type === 'LAUNCH') {
@@ -189,71 +181,45 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true; // keep message channel open for async response
 });
 
-async function handleGetTabs(senderTab) {
+async function handleGetTabs() {
   const sites = await loadSites();
   const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
-  let currentSiteId = null;
-  if (senderTab) {
-    for (const [siteId, chromeTabId] of Object.entries(tabMap)) {
-      if (chromeTabId === senderTab.id) {
-        currentSiteId = siteId;
-        break;
-      }
-    }
-  }
   return { sites: enabledSites, currentSiteId };
 }
 
 async function handleSwitchTab(siteId, senderTab) {
-  // Content script only runs in AIWrap window, so sender's window IS our window
-  const windowId = senderTab?.windowId;
-  if (!windowId) return { ok: false };
+  if (siteId === currentSiteId) return { ok: true };
 
-  // Keep aiwrapWindowId in sync
-  if (aiwrapWindowId !== windowId) {
-    aiwrapWindowId = windowId;
-    await persistState();
-  }
-
-  // If tab already exists, just activate it (instant, no reload)
-  if (tabMap[siteId]) {
-    try {
-      await chrome.tabs.update(tabMap[siteId], { active: true });
-      await saveLastActiveTab(siteId);
-      return { ok: true };
-    } catch {
-      delete tabMap[siteId];
-    }
-  }
-
-  // First time clicking this site — create a new tab in the AIWrap window
   const sites = await loadSites();
   const site = sites.find(s => s.id === siteId);
-  if (site) {
-    const tab = await chrome.tabs.create({
-      windowId,
-      url: site.url,
-      active: true
-    });
-    tabMap[siteId] = tab.id;
-    await saveLastActiveTab(siteId);
-    await persistState();
-  }
+  if (!site) return { ok: false };
+
+  // Navigate the single tab to the new site
+  const tabId = aiwrapTabId || senderTab?.id;
+  if (!tabId) return { ok: false };
+
+  await chrome.tabs.update(tabId, { url: site.url });
+  aiwrapTabId = tabId;
+  currentSiteId = siteId;
+
+  await saveLastActiveTab(siteId);
+  await persistState();
   return { ok: true };
 }
 
-async function handleHideTab(siteId) {
+async function handleHideTab(siteId, senderTab) {
   const sites = await loadSites();
   const site = sites.find(s => s.id === siteId);
   if (site) {
     site.enabled = false;
     await saveSites(sites);
-    const chromeTabId = tabMap[siteId];
-    if (chromeTabId) {
-      await chrome.tabs.remove(chromeTabId);
-      delete tabMap[siteId];
+    // If hiding the current site, switch to the first enabled one
+    if (siteId === currentSiteId) {
+      const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
+      if (enabledSites.length > 0) {
+        await handleSwitchTab(enabledSites[0].id, senderTab);
+      }
     }
-    await persistState();
   }
   return { ok: true };
 }

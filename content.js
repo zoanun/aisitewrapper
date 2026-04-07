@@ -1,19 +1,33 @@
 (async () => {
   // Only activate inside AIWrap window
-  const resp = await chrome.runtime.sendMessage({ type: 'IS_AIWRAP_WINDOW' });
+  let resp;
+  try {
+    resp = await chrome.runtime.sendMessage({ type: 'IS_AIWRAP_WINDOW' });
+  } catch {
+    return; // Extension context invalidated (e.g. after reload)
+  }
   if (!resp || !resp.isAiwrap) return;
 
   // Skip extension pages
   if (location.protocol === 'chrome-extension:') return;
 
+  // Helper to safely send messages (extension may be reloaded at any time)
+  function safeSendMessage(msg) {
+    try {
+      return chrome.runtime.sendMessage(msg);
+    } catch {
+      return Promise.resolve(null);
+    }
+  }
+
   let tabbar = null;
   let tabsContainer = null;
   let contextMenu = null;
+  let hideTimer = null;
 
   function ensureTabbar() {
     if (document.getElementById('aiwrap-tabbar')) return;
 
-    document.documentElement.classList.add('aiwrap-active');
 
     tabbar = document.createElement('div');
     tabbar.id = 'aiwrap-tabbar';
@@ -23,27 +37,38 @@
 
     const settingsBtn = document.createElement('div');
     settingsBtn.className = 'aiwrap-settings-btn';
-    settingsBtn.innerHTML = '&#9881;';
+    settingsBtn.textContent = '\u2699';
     settingsBtn.title = 'Settings';
     settingsBtn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
+      safeSendMessage({ type: 'OPEN_SETTINGS' });
     });
 
     tabbar.appendChild(tabsContainer);
     tabbar.appendChild(settingsBtn);
 
-    if (document.body) {
-      document.body.prepend(tabbar);
-    }
+    // Append to html (not body) so body's transform doesn't clip the tabbar
+    document.documentElement.prepend(tabbar);
+
+    // Keep visible while hovering the tab bar
+    tabbar.addEventListener('mouseenter', () => {
+      clearTimeout(hideTimer);
+      tabbar.classList.add('aiwrap-visible');
+    });
+    tabbar.addEventListener('mouseleave', () => {
+      hideTimer = setTimeout(() => {
+        tabbar.classList.remove('aiwrap-visible');
+      }, 300);
+    });
 
     renderTabs();
   }
 
   async function renderTabs() {
     if (!tabsContainer) return;
-    const tabsResp = await chrome.runtime.sendMessage({ type: 'GET_TABS' });
+    const tabsResp = await safeSendMessage({ type: 'GET_TABS' });
+    if (!tabsResp) return;
 
-    tabsContainer.innerHTML = '';
+    while (tabsContainer.firstChild) tabsContainer.firstChild.remove();
     const sites = tabsResp.sites || [];
     const activeSiteId = tabsResp.currentSiteId;
 
@@ -54,8 +79,15 @@
 
       const favicon = document.createElement('img');
       const hostname = new URL(site.url).hostname;
-      favicon.src = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
+      favicon.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
       favicon.alt = '';
+      favicon.onerror = () => {
+        // Fallback: replace with first letter
+        const letter = document.createElement('span');
+        letter.className = 'aiwrap-tab-letter';
+        letter.textContent = site.name.charAt(0);
+        favicon.replaceWith(letter);
+      };
 
       const name = document.createElement('span');
       name.textContent = site.name;
@@ -64,7 +96,7 @@
       tab.appendChild(name);
 
       tab.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: 'SWITCH_TAB', siteId: site.id });
+        safeSendMessage({ type: 'SWITCH_TAB', siteId: site.id });
       });
 
       tab.addEventListener('contextmenu', (e) => {
@@ -85,7 +117,7 @@
     hideItem.className = 'aiwrap-menu-item';
     hideItem.textContent = 'Hide Tab';
     hideItem.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'HIDE_TAB', siteId });
+      safeSendMessage({ type: 'HIDE_TAB', siteId });
       removeContextMenu();
     });
 
@@ -93,7 +125,7 @@
     refreshItem.className = 'aiwrap-menu-item';
     refreshItem.textContent = 'Refresh Page';
     refreshItem.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'REFRESH_TAB', siteId });
+      safeSendMessage({ type: 'REFRESH_TAB', siteId });
       removeContextMenu();
     });
 
@@ -101,7 +133,7 @@
     contextMenu.appendChild(refreshItem);
     contextMenu.style.left = x + 'px';
     contextMenu.style.top = y + 'px';
-    document.body.appendChild(contextMenu);
+    document.documentElement.appendChild(contextMenu);
   }
 
   function removeContextMenu() {
@@ -112,6 +144,30 @@
   }
 
   document.addEventListener('click', removeContextMenu);
+
+  // Show tab bar when mouse near top, hide when mouse leaves
+  document.addEventListener('mousemove', (e) => {
+    if (!tabbar) return;
+    if (e.clientY <= 8) {
+      // Mouse near top edge — show
+      clearTimeout(hideTimer);
+      tabbar.classList.add('aiwrap-visible');
+    } else if (e.clientY > 50 && tabbar.classList.contains('aiwrap-visible')) {
+      // Mouse moved away — hide after short delay
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        tabbar.classList.remove('aiwrap-visible');
+      }, 300);
+    }
+  });
+
+
+  // Listen for tab bar refresh requests from background
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'REFRESH_TABBAR') {
+      renderTabs();
+    }
+  });
 
   // Initial injection
   ensureTabbar();

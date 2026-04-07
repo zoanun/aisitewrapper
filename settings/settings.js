@@ -1,8 +1,10 @@
 let sites = [];
+let defaultSiteId = null;
 let dragSrcIndex = null;
 
 async function init() {
   sites = await loadSites();
+  defaultSiteId = await loadDefaultSite();
   render();
 }
 
@@ -19,33 +21,82 @@ function render() {
     card.dataset.id = site.id;
 
     const hostname = new URL(site.url).hostname;
-    const faviconUrl = `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
+    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
 
-    card.innerHTML = `
-      <div class="card-header">
-        <img src="${faviconUrl}" alt="">
-        <span class="site-name">${escapeHtml(site.name)}</span>
-        <label class="toggle">
-          <input type="checkbox" ${site.enabled ? 'checked' : ''}>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="card-url">${escapeHtml(site.url)}</div>
-      <div class="card-actions">
-        <button class="btn btn-edit">Edit</button>
-        <button class="btn btn-clear-cache">Clear Cache</button>
-        ${!site.builtin ? '<button class="btn btn-danger btn-delete">Delete</button>' : ''}
-      </div>
-    `;
+    const isDefault = site.id === defaultSiteId;
 
-    card.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
+    const header = document.createElement('div');
+    header.className = 'card-header';
+
+    const favicon = document.createElement('img');
+    favicon.src = faviconUrl;
+    favicon.alt = '';
+
+    const siteName = document.createElement('span');
+    siteName.className = 'site-name';
+    siteName.textContent = site.name;
+
+    const defaultBtn = document.createElement('button');
+    defaultBtn.className = 'btn-default' + (isDefault ? ' active' : '');
+    defaultBtn.textContent = isDefault ? '\u2605' : '\u2606';
+    defaultBtn.title = isDefault ? 'Default' : 'Set as default';
+    defaultBtn.addEventListener('click', async () => {
+      defaultSiteId = isDefault ? null : site.id;
+      await saveDefaultSite(defaultSiteId);
+      render();
+    });
+
+    const toggle = document.createElement('label');
+    toggle.className = 'toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = site.enabled;
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+    toggle.appendChild(checkbox);
+    toggle.appendChild(slider);
+
+    header.appendChild(favicon);
+    header.appendChild(siteName);
+    header.appendChild(defaultBtn);
+    header.appendChild(toggle);
+
+    const urlDiv = document.createElement('div');
+    urlDiv.className = 'card-url';
+    urlDiv.textContent = site.url;
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-edit';
+    editBtn.textContent = 'Edit';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'btn btn-clear-cache';
+    clearBtn.textContent = 'Clear Cache';
+
+    actions.appendChild(editBtn);
+    actions.appendChild(clearBtn);
+
+    if (!site.builtin) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn btn-danger btn-delete';
+      deleteBtn.textContent = 'Delete';
+      actions.appendChild(deleteBtn);
+    }
+
+    card.appendChild(header);
+    card.appendChild(urlDiv);
+    card.appendChild(actions);
+
+    checkbox.addEventListener('change', async (e) => {
       site.enabled = e.target.checked;
       await saveSites(sites);
     });
 
-    card.querySelector('.btn-edit').addEventListener('click', () => openModal(site));
-
-    card.querySelector('.btn-clear-cache').addEventListener('click', () => clearSiteCache(site));
+    editBtn.addEventListener('click', () => openModal(site));
+    clearBtn.addEventListener('click', () => clearSiteCache(site));
 
     const deleteBtn = card.querySelector('.btn-delete');
     if (deleteBtn) {
@@ -161,5 +212,16 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+document.getElementById('back-btn').addEventListener('click', async () => {
+  // Navigate back to the last active site
+  const lastActive = await loadLastActiveTab();
+  const sites = await loadSites();
+  const site = (lastActive && sites.find(s => s.id === lastActive && s.enabled)) ||
+    sites.filter(s => s.enabled).sort((a, b) => a.order - b.order)[0];
+  if (site) {
+    location.href = site.url;
+  }
+});
 
 init();
