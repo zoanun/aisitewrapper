@@ -37,10 +37,34 @@
 
 独立桌面应用，无需浏览器。
 
-1. 克隆本仓库
-2. 运行 `npm install`
-3. 运行 `npm start` 启动应用
-4. 运行 `npm run build` 打包为安装程序（.exe）
+**快速启动：**
+
+```bash
+git clone https://github.com/zoanun/aisitewrapper.git
+cd aisitewrapper
+npm install
+npm start
+```
+
+**打包 .exe 安装程序：**
+
+```bash
+# 打包安装版（输出到 dist/ 目录）
+npm run build
+
+# 或打包免安装版（单个 .exe，无需安装）
+npm run build:portable
+```
+
+> Windows 下如果遇到 symlink 报错，可以禁用代码签名后打包：
+> ```bash
+> set CSC_IDENTITY_AUTO_DISCOVERY=false
+> npx electron-builder --win --config.win.signAndEditExecutable=false
+> ```
+
+打包完成后：
+- `dist/AI Site Wrapper Setup x.x.x.exe` — 安装版
+- `dist/win-unpacked/` — 免安装版，直接运行 `AI Site Wrapper.exe`
 
 ### Chrome 扩展
 

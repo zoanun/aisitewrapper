@@ -39,10 +39,34 @@ Aggregate AI chat websites into one window. Switch between multiple AI assistant
 
 Standalone desktop app, no browser required.
 
-1. Clone this repository
-2. Run `npm install`
-3. Run `npm start` to launch
-4. Run `npm run build` to package as an installer (.exe)
+**Quick Start:**
+
+```bash
+git clone https://github.com/zoanun/aisitewrapper.git
+cd aisitewrapper
+npm install
+npm start
+```
+
+**Build .exe Installer:**
+
+```bash
+# Build installer (outputs to dist/ folder)
+npm run build
+
+# Or build portable version (single .exe, no install needed)
+npm run build:portable
+```
+
+> On Windows, if you see a symlink error during build, run with code signing disabled:
+> ```bash
+> set CSC_IDENTITY_AUTO_DISCOVERY=false
+> npx electron-builder --win --config.win.signAndEditExecutable=false
+> ```
+
+After build, you will find:
+- `dist/AI Site Wrapper Setup x.x.x.exe` — installer
+- `dist/win-unpacked/` — portable version, run `AI Site Wrapper.exe` directly
 
 ### Chrome Extension
 
