@@ -205,6 +205,16 @@ async function handleGetTabs(senderTab) {
 }
 
 async function handleSwitchTab(siteId, senderTab) {
+  // Content script only runs in AIWrap window, so sender's window IS our window
+  const windowId = senderTab?.windowId;
+  if (!windowId) return { ok: false };
+
+  // Keep aiwrapWindowId in sync
+  if (aiwrapWindowId !== windowId) {
+    aiwrapWindowId = windowId;
+    await persistState();
+  }
+
   // If tab already exists, just activate it (instant, no reload)
   if (tabMap[siteId]) {
     try {
@@ -212,7 +222,6 @@ async function handleSwitchTab(siteId, senderTab) {
       await saveLastActiveTab(siteId);
       return { ok: true };
     } catch {
-      // Tab no longer exists, remove from map and create new
       delete tabMap[siteId];
     }
   }
@@ -220,9 +229,7 @@ async function handleSwitchTab(siteId, senderTab) {
   // First time clicking this site — create a new tab in the AIWrap window
   const sites = await loadSites();
   const site = sites.find(s => s.id === siteId);
-  // Use aiwrapWindowId, or fall back to sender's window
-  const windowId = aiwrapWindowId || senderTab?.windowId;
-  if (site && windowId) {
+  if (site) {
     const tab = await chrome.tabs.create({
       windowId,
       url: site.url,
