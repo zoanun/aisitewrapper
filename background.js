@@ -1,7 +1,7 @@
 importScripts('lib/config.js');
 
 let aiwrapWindowId = null;
-let tabMap = {}; // siteId -> chromeTabId
+let tabMap = {}; // siteId -> chromeTabId (only for tabs already created)
 let launching = false;
 
 chrome.action.onClicked.addListener(handleLaunch);
@@ -12,7 +12,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// Restore state from session storage on Service Worker wake-up
 async function restoreState() {
   const result = await chrome.storage.session.get(['aiwrapWindowId', 'tabMap']);
   if (result.aiwrapWindowId) {
@@ -64,9 +63,11 @@ async function createAiwrapWindow() {
 
   if (enabledSites.length === 0) return;
 
-  // Create window with first site
+  // Only open the last active site (or first site)
+  const startSite = (lastActive && enabledSites.find(s => s.id === lastActive)) || enabledSites[0];
+
   const win = await chrome.windows.create({
-    url: enabledSites[0].url,
+    url: startSite.url,
     type: 'popup',
     width: windowState.width,
     height: windowState.height,
@@ -76,23 +77,9 @@ async function createAiwrapWindow() {
 
   aiwrapWindowId = win.id;
   tabMap = {};
-  tabMap[enabledSites[0].id] = win.tabs[0].id;
+  tabMap[startSite.id] = win.tabs[0].id;
 
-  // Pre-create all other tabs (background loading for cache)
-  for (let i = 1; i < enabledSites.length; i++) {
-    const tab = await chrome.tabs.create({
-      windowId: aiwrapWindowId,
-      url: enabledSites[i].url,
-      active: false
-    });
-    tabMap[enabledSites[i].id] = tab.id;
-  }
-
-  // Activate last active tab if available
-  if (lastActive && tabMap[lastActive]) {
-    await chrome.tabs.update(tabMap[lastActive], { active: true });
-  }
-
+  await saveLastActiveTab(startSite.id);
   await persistState();
 }
 
@@ -104,7 +91,6 @@ chrome.windows.onRemoved.addListener(async (windowId) => {
   }
 });
 
-// Save window position/size when focus leaves
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (aiwrapWindowId === null) return;
   if (windowId !== aiwrapWindowId && windowId !== chrome.windows.WINDOW_ID_NONE) {
@@ -120,7 +106,6 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
-// Track active tab changes (user clicking native Chrome tabs)
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   if (activeInfo.windowId !== aiwrapWindowId) return;
   for (const [siteId, chromeTabId] of Object.entries(tabMap)) {
@@ -170,7 +155,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 async function handleGetTabs(senderTab) {
   const sites = await loadSites();
   const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
-  // Find which site the sender tab belongs to
   let currentSiteId = null;
   if (senderTab) {
     for (const [siteId, chromeTabId] of Object.entries(tabMap)) {
@@ -184,10 +168,25 @@ async function handleGetTabs(senderTab) {
 }
 
 async function handleSwitchTab(siteId) {
-  const chromeTabId = tabMap[siteId];
-  if (chromeTabId) {
-    await chrome.tabs.update(chromeTabId, { active: true });
+  // If tab already exists, just activate it (instant, no reload)
+  if (tabMap[siteId]) {
+    await chrome.tabs.update(tabMap[siteId], { active: true });
     await saveLastActiveTab(siteId);
+    return { ok: true };
+  }
+
+  // First time clicking this site — create a new tab
+  const sites = await loadSites();
+  const site = sites.find(s => s.id === siteId);
+  if (site && aiwrapWindowId) {
+    const tab = await chrome.tabs.create({
+      windowId: aiwrapWindowId,
+      url: site.url,
+      active: true
+    });
+    tabMap[siteId] = tab.id;
+    await saveLastActiveTab(siteId);
+    await persistState();
   }
   return { ok: true };
 }
