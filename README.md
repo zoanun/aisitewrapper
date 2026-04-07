@@ -1,5 +1,7 @@
 # AI Site Wrapper
 
+[中文说明](README_CN.md)
+
 Aggregate AI chat websites into one window. Switch between multiple AI assistants instantly.
 
 ## Features
