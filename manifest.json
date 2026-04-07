@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "AIWrap",
+  "version": "1.0.0",
+  "description": "Aggregate AI chat websites into one window",
+  "permissions": [
+    "storage",
+    "tabs",
+    "browsingData"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "AIWrap - Open AI Hub"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}
