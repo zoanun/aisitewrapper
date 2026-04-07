@@ -82,7 +82,7 @@
     refreshItem.className = 'aiwrap-menu-item';
     refreshItem.textContent = 'Refresh Page';
     refreshItem.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'REFRESH_TAB' });
+      chrome.runtime.sendMessage({ type: 'REFRESH_TAB', siteId });
       removeContextMenu();
     });
 
