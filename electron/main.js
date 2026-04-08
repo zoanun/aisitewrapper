@@ -1,25 +1,22 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session } = require('electron');
+const { app, BaseWindow, WebContentsView, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { TabManager, TOOLBAR_HEIGHT } = require('./tab-manager');
+const { DEFAULT_SITES, DEFAULT_WINDOW } = require('../lib/config.js');
 
-// --- Simple JSON file store (replaces chrome.storage) ---
+// --- JSON file store ---
 const storeFile = path.join(app.getPath('userData'), 'aiwrap-store.json');
 
 function readStore() {
-  try {
-    return JSON.parse(fs.readFileSync(storeFile, 'utf-8'));
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(fs.readFileSync(storeFile, 'utf-8')); }
+  catch { return {}; }
 }
 
 function writeStore(data) {
   fs.writeFileSync(storeFile, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-function storeGet(key) {
-  return readStore()[key];
-}
+function storeGet(key) { return readStore()[key]; }
 
 function storeSet(key, value) {
   const data = readStore();
@@ -27,9 +24,7 @@ function storeSet(key, value) {
   writeStore(data);
 }
 
-// --- Config: import shared site list from lib/config.js ---
-const { DEFAULT_SITES, DEFAULT_WINDOW } = require('../lib/config.js');
-
+// --- Site management ---
 function loadSites() {
   const sites = storeGet('sites');
   if (sites && sites.length > 0) {
@@ -49,115 +44,92 @@ function loadSites() {
   return defaultSites;
 }
 
-// --- Main window ---
-let mainWindow = null;
-let siteView = null;
-let currentSiteId = null;
-const TAB_BAR_HEIGHT = 40;
+function getEnabledSites() {
+  return loadSites().filter(s => s.enabled).sort((a, b) => a.order - b.order);
+}
+
+// --- Window ---
+let baseWindow = null;
+let uiView = null;
+let tabManager = null;
 
 function createWindow() {
   const winState = storeGet('window') || DEFAULT_WINDOW;
-  const lastActive = storeGet('lastActiveTab');
-  const defaultSite = storeGet('defaultSite');
-  const sites = loadSites();
-  const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
 
-  mainWindow = new BrowserWindow({
+  baseWindow = new BaseWindow({
     width: winState.width,
     height: winState.height,
     ...(winState.left !== undefined && { x: winState.left }),
     ...(winState.top !== undefined && { y: winState.top }),
     icon: path.join(__dirname, '..', 'icons', 'icon128.png'),
-    title: 'AI Site Wrapper',
+    title: 'AI Site Wrapper'
+  });
+
+  // UI view for bookmark bar + tab bar
+  uiView = new WebContentsView({
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     }
   });
+  baseWindow.contentView.addChildView(uiView);
+  uiView.webContents.loadFile(path.join(__dirname, 'ui', 'index.html'));
 
-  // Remove default menu
-  mainWindow.setMenuBarVisibility(false);
+  // Position UI view
+  function updateLayout() {
+    if (!baseWindow || baseWindow.isDestroyed()) return;
+    const bounds = baseWindow.getContentBounds();
+    uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: TOOLBAR_HEIGHT });
+    if (tabManager) tabManager.resizeAllViews();
+  }
+  updateLayout();
+  baseWindow.on('resize', updateLayout);
 
-  // Load tab bar UI
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  // Create tab manager
+  tabManager = new TabManager(baseWindow, uiView, { storeGet, storeSet });
 
-  // Create BrowserView for site content
-  siteView = new BrowserView({
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
+  // Restore session or open default
+  const lastSession = storeGet('lastSession');
+  const enabledSites = getEnabledSites();
+
+  if (lastSession && lastSession.tabs && lastSession.tabs.length > 0) {
+    let activeIndex = 0;
+    for (let i = 0; i < lastSession.tabs.length; i++) {
+      const saved = lastSession.tabs[i];
+      const site = loadSites().find(s => s.id === saved.siteId);
+      if (site) {
+        tabManager.createTab(site.id, site.name, saved.url || site.url);
+        if (saved.siteId === lastSession.activeTab) {
+          activeIndex = i;
+        }
+      }
+    }
+    const tabs = tabManager.getTabs();
+    if (tabs[activeIndex]) {
+      tabManager.switchTab(tabs[activeIndex].id);
+    }
+  } else {
+    const defaultSiteId = storeGet('defaultSite');
+    const startSite = (defaultSiteId && enabledSites.find(s => s.id === defaultSiteId)) || enabledSites[0];
+    if (startSite) {
+      tabManager.createTab(startSite.id, startSite.name, startSite.url);
+    }
+  }
+
+  // Save state on close
+  baseWindow.on('close', () => {
+    const bounds = baseWindow.getBounds();
+    storeSet('window', { width: bounds.width, height: bounds.height, left: bounds.x, top: bounds.y });
+    if (tabManager) {
+      storeSet('lastSession', tabManager.getSessionData());
     }
   });
-  mainWindow.setBrowserView(siteView);
 
-  // Position site view below tab bar
-  function updateViewBounds() {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const [w, h] = mainWindow.getContentSize();
-    siteView.setBounds({ x: 0, y: TAB_BAR_HEIGHT, width: w, height: h - TAB_BAR_HEIGHT });
-  }
-  updateViewBounds();
-  mainWindow.on('resize', updateViewBounds);
-
-  // Load initial site
-  const startSite =
-    (defaultSite && enabledSites.find(s => s.id === defaultSite)) ||
-    (lastActive && enabledSites.find(s => s.id === lastActive)) ||
-    enabledSites[0];
-
-  if (startSite) {
-    currentSiteId = startSite.id;
-    siteView.webContents.loadURL(startSite.url);
-    storeSet('lastActiveTab', startSite.id);
-  }
-
-  // Save window state on close
-  mainWindow.on('close', () => {
-    const bounds = mainWindow.getBounds();
-    storeSet('window', {
-      width: bounds.width,
-      height: bounds.height,
-      left: bounds.x,
-      top: bounds.y
-    });
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    siteView = null;
-  });
-
-  // Handle new window requests (OAuth popups stay in-app, others go to browser)
-  const OAUTH_DOMAINS = [
-    'accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com',
-    'github.com', 'auth0.com', 'login.live.com'
-  ];
-
-  siteView.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return { action: 'deny' };
-      }
-      // Allow OAuth popups to open as Electron windows
-      if (OAUTH_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d))) {
-        return { action: 'allow' };
-      }
-      // Check if same origin as current site (likely auth-related)
-      const currentUrl = siteView.webContents.getURL();
-      if (currentUrl) {
-        try {
-          const currentOrigin = new URL(currentUrl).origin;
-          if (parsed.origin === currentOrigin) {
-            return { action: 'allow' };
-          }
-        } catch {}
-      }
-      // External link — open in system browser
-      require('electron').shell.openExternal(url);
-    } catch {}
-    return { action: 'deny' };
+  baseWindow.on('closed', () => {
+    baseWindow = null;
+    uiView = null;
+    tabManager = null;
   });
 }
 
@@ -165,56 +137,87 @@ function createWindow() {
 ipcMain.handle('store-get', (_e, key) => storeGet(key));
 ipcMain.handle('store-set', (_e, key, value) => storeSet(key, value));
 
-ipcMain.handle('get-tabs', () => {
-  const sites = loadSites();
-  const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
-  return { sites: enabledSites, currentSiteId };
-});
-
-ipcMain.handle('switch-tab', (_e, siteId) => {
+ipcMain.handle('create-tab', (_e, siteId) => {
   const sites = loadSites();
   const site = sites.find(s => s.id === siteId);
-  if (!site || !siteView) return { ok: false };
-  // Validate URL scheme before navigating
-  try {
-    const parsed = new URL(site.url);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return { ok: false };
-  } catch { return { ok: false }; }
-  currentSiteId = siteId;
-  storeSet('lastActiveTab', siteId);
-  siteView.webContents.loadURL(site.url);
-  return { ok: true };
+  if (!site || !tabManager) return null;
+  return tabManager.createTab(site.id, site.name, site.url);
 });
 
-ipcMain.handle('refresh-tab', () => {
-  if (siteView) siteView.webContents.reload();
-  return { ok: true };
+ipcMain.handle('switch-tab', (_e, tabId) => {
+  if (!tabManager) return false;
+  return tabManager.switchTab(tabId);
+});
+
+ipcMain.handle('close-tab', (_e, tabId) => {
+  if (!tabManager) return false;
+  return tabManager.closeTab(tabId);
+});
+
+ipcMain.handle('refresh-tab', (_e, tabId) => {
+  if (!tabManager) return;
+  tabManager.refreshTab(tabId);
+});
+
+ipcMain.handle('get-tabs', () => {
+  if (!tabManager) return { tabs: [], activeTabId: null };
+  return { tabs: tabManager.getTabs(), activeTabId: tabManager.getActiveTabId() };
+});
+
+ipcMain.handle('get-bookmarks', () => {
+  return getEnabledSites().map(s => ({ id: s.id, name: s.name, url: s.url }));
+});
+
+ipcMain.handle('disable-site', (_e, siteId) => {
+  const sites = loadSites();
+  const site = sites.find(s => s.id === siteId);
+  if (site) {
+    site.enabled = false;
+    storeSet('sites', sites);
+    if (uiView && !uiView.webContents.isDestroyed()) {
+      uiView.webContents.send('bookmarks-changed');
+    }
+  }
 });
 
 ipcMain.handle('open-settings', () => {
-  if (!mainWindow) return;
-  // Hide site view and load settings in main window
-  mainWindow.removeBrowserView(siteView);
-  mainWindow.loadFile(path.join(__dirname, 'settings.html'));
+  if (!tabManager) return;
+  const settingsTab = tabManager.tabs.find(t => t.siteId === '__settings__');
+  if (settingsTab) {
+    tabManager.switchTab(settingsTab.id);
+    return;
+  }
+  const tabId = 'tab_' + (tabManager.nextId++);
+  const view = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  const bounds = baseWindow.getContentBounds();
+  view.setBounds({
+    x: 0, y: TOOLBAR_HEIGHT,
+    width: bounds.width,
+    height: Math.max(0, bounds.height - TOOLBAR_HEIGHT)
+  });
+  baseWindow.contentView.addChildView(view);
+  view.webContents.loadFile(path.join(__dirname, 'settings', 'settings.html'));
+
+  const tab = { id: tabId, siteId: '__settings__', title: 'Settings', url: '', view };
+  tabManager.tabs.push(tab);
+  tabManager.switchTab(tabId);
+  tabManager._notifyUI('tab-created', { id: tabId, siteId: '__settings__', title: 'Settings', url: '' });
 });
 
 ipcMain.handle('close-settings', () => {
-  if (!mainWindow || !siteView) return;
-  // Restore site view and tab bar
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.setBrowserView(siteView);
-  const [w, h] = mainWindow.getContentSize();
-  siteView.setBounds({ x: 0, y: TAB_BAR_HEIGHT, width: w, height: h - TAB_BAR_HEIGHT });
-  // Reload current site in case settings changed
-  const sites = loadSites();
-  const site = sites.find(s => s.id === currentSiteId && s.enabled);
-  if (!site) {
-    const enabledSites = sites.filter(s => s.enabled).sort((a, b) => a.order - b.order);
-    if (enabledSites.length > 0) {
-      currentSiteId = enabledSites[0].id;
-      storeSet('lastActiveTab', currentSiteId);
-      siteView.webContents.loadURL(enabledSites[0].url);
-    }
+  if (!tabManager) return;
+  const settingsTab = tabManager.tabs.find(t => t.siteId === '__settings__');
+  if (settingsTab) {
+    tabManager.closeTab(settingsTab.id);
+  }
+  if (uiView && !uiView.webContents.isDestroyed()) {
+    uiView.webContents.send('bookmarks-changed');
   }
 });
 
@@ -232,10 +235,8 @@ ipcMain.handle('clear-all-cache', async (_e, origins) => {
 // --- App lifecycle ---
 app.whenReady().then(createWindow);
 
-app.on('window-all-closed', () => {
-  app.quit();
-});
+app.on('window-all-closed', () => { app.quit(); });
 
 app.on('activate', () => {
-  if (!mainWindow) createWindow();
+  if (!baseWindow) createWindow();
 });
