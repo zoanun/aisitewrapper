@@ -3,8 +3,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #1e1e1e;
-  height: 68px;
-  overflow: hidden;
+  min-height: 68px;
   user-select: none;
 }
 
@@ -147,6 +146,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 998;
+  background: rgba(0,0,0,0.3);
 }
 
 .site-picker-overlay.show { display: block; }

@@ -91,8 +91,7 @@ function renderTabs(tabs, activeTabId) {
 }
 
 // --- Site Picker (+ button) ---
-tabAddBtn.addEventListener('click', async (e) => {
-  e.stopPropagation();
+async function openPicker() {
   const sites = await window.electronAPI.getBookmarks();
   sitePicker.innerHTML = '';
 
@@ -108,21 +107,34 @@ tabAddBtn.addEventListener('click', async (e) => {
 
     item.addEventListener('click', () => {
       window.electronAPI.createTab(site.id);
-      pickerOverlay.classList.remove('show');
+      closePicker();
     });
 
     sitePicker.appendChild(item);
   }
+
+  // Expand UI view to full window so dropdown is visible
+  await window.electronAPI.expandUIView();
 
   // Position picker below + button
   const rect = tabAddBtn.getBoundingClientRect();
   sitePicker.style.left = rect.left + 'px';
   sitePicker.style.top = rect.bottom + 'px';
   pickerOverlay.classList.add('show');
+}
+
+function closePicker() {
+  pickerOverlay.classList.remove('show');
+  window.electronAPI.shrinkUIView();
+}
+
+tabAddBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openPicker();
 });
 
 pickerOverlay.addEventListener('click', () => {
-  pickerOverlay.classList.remove('show');
+  closePicker();
 });
 
 // --- Context Menus ---

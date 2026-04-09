@@ -1,4 +1,4 @@
-const { app, BaseWindow, WebContentsView, ipcMain, session, shell } = require('electron');
+const { app, BaseWindow, WebContentsView, Menu, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { TabManager, TOOLBAR_HEIGHT } = require('./tab-manager');
@@ -54,6 +54,9 @@ let uiView = null;
 let tabManager = null;
 
 function createWindow() {
+  // Remove application menu (File, Edit, View, Window, Help)
+  Menu.setApplicationMenu(null);
+
   const winState = storeGet('window') || DEFAULT_WINDOW;
 
   baseWindow = new BaseWindow({
@@ -135,7 +138,25 @@ function createWindow() {
 
 // --- IPC handlers ---
 ipcMain.handle('store-get', (_e, key) => storeGet(key));
-ipcMain.handle('store-set', (_e, key, value) => storeSet(key, value));
+ipcMain.handle('store-set', (_e, key, value) => {
+  storeSet(key, value);
+  // When sites are updated (from settings page), notify bookmark bar
+  if (key === 'sites' && uiView && !uiView.webContents.isDestroyed()) {
+    uiView.webContents.send('bookmarks-changed');
+  }
+});
+
+ipcMain.handle('expand-ui-view', () => {
+  if (!baseWindow || baseWindow.isDestroyed() || !uiView) return;
+  const bounds = baseWindow.getContentBounds();
+  uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height });
+});
+
+ipcMain.handle('shrink-ui-view', () => {
+  if (!baseWindow || baseWindow.isDestroyed() || !uiView) return;
+  const bounds = baseWindow.getContentBounds();
+  uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: TOOLBAR_HEIGHT });
+});
 
 ipcMain.handle('create-tab', (_e, siteId) => {
   const sites = loadSites();

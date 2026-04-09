@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearSiteCache: (origin) => ipcRenderer.invoke('clear-site-cache', origin),
   clearAllCache: (origins) => ipcRenderer.invoke('clear-all-cache', origins),
 
+  // UI view sizing (for picker dropdown)
+  expandUIView: () => ipcRenderer.invoke('expand-ui-view'),
+  shrinkUIView: () => ipcRenderer.invoke('shrink-ui-view'),
+
   // Events from main → renderer
   onTabCreated: (cb) => ipcRenderer.on('tab-created', (_e, data) => cb(data)),
   onTabSwitched: (cb) => ipcRenderer.on('tab-switched', (_e, data) => cb(data)),
