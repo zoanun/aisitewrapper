@@ -7,7 +7,28 @@
       "Bash(magick:*)",
       "Bash(python3:*)",
       "Bash(py --version)",
-      "Bash(py:*)"
+      "Bash(py:*)",
+      "Bash(npm install:*)",
+      "Bash(npx electron:*)",
+      "Skill(review)",
+      "Bash(npm run:*)",
+      "Bash(where magick:*)",
+      "Bash(npx --yes sharp-cli --version)",
+      "Bash(npx sharp-cli:*)",
+      "Bash(node -e ':*)",
+      "Bash(npx --yes svg2png-many icons/icon.svg --width 256 --height 256 --output icons/icon256.png)",
+      "Bash(npx --yes svgexport icons/icon.svg icons/icon256.png 256:256)",
+      "Bash(npx --yes create-icon --help)",
+      "Bash(npx --yes sharp -i icons/icon.svg -o icons/icon256.png resize 256 256)",
+      "Bash(npm ls:*)",
+      "Bash(pip show:*)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --win --config.win.signingHashAlgorithms=\"[]\" --config.win.sign=null)",
+      "Bash(rm -rf ~/AppData/Local/electron-builder/Cache/winCodeSign/)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_LINK=\"\" npx electron-builder --win --config.win.signAndEditExecutable=false --config.forceCodeSigning=false)",
+      "Bash(ls:*)",
+      "Bash(rm -f manifest.json background.js content.js content.css)",
+      "Bash(rm -rf app/ setup/ settings/)",
+      "Bash(rm -f electron/index.html electron/renderer.js electron/settings.html electron/settings-renderer.js)"
     ]
   }
 }
