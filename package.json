@@ -1,7 +1,7 @@
 {
   "name": "ai-site-wrapper",
-  "version": "1.0.0",
-  "description": "Aggregate AI chat websites into one desktop window",
+  "version": "2.0.0",
+  "description": "Browser-like AI chat aggregator with multi-tab support",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -29,7 +29,6 @@
       "electron/**/*",
       "lib/**/*",
       "icons/**/*",
-      "settings/settings.css",
       "!node_modules/**/*"
     ]
   }
