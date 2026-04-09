@@ -150,12 +150,28 @@ ipcMain.handle('expand-ui-view', () => {
   if (!baseWindow || baseWindow.isDestroyed() || !uiView) return;
   const bounds = baseWindow.getContentBounds();
   uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height });
+  // Hide all content tabs so they don't cover the expanded UI view
+  if (tabManager) {
+    for (const tab of tabManager.tabs) {
+      tab.view.setVisible(false);
+    }
+    if (tabManager.welcomeView) tabManager.welcomeView.setVisible(false);
+  }
 });
 
 ipcMain.handle('shrink-ui-view', () => {
   if (!baseWindow || baseWindow.isDestroyed() || !uiView) return;
   const bounds = baseWindow.getContentBounds();
   uiView.setBounds({ x: 0, y: 0, width: bounds.width, height: TOOLBAR_HEIGHT });
+  // Restore active tab visibility
+  if (tabManager) {
+    const activeTab = tabManager.tabs.find(t => t.id === tabManager.activeTabId);
+    if (activeTab) {
+      activeTab.view.setVisible(true);
+    } else if (tabManager.welcomeView) {
+      tabManager.welcomeView.setVisible(true);
+    }
+  }
 });
 
 ipcMain.handle('create-tab', (_e, siteId) => {
