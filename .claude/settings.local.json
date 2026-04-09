@@ -7,7 +7,9 @@
       "Bash(magick:*)",
       "Bash(python3:*)",
       "Bash(py --version)",
-      "Bash(py:*)"
+      "Bash(py:*)",
+      "Bash(rm -f background.js content.css content.js manifest.json package.json package-lock.json)",
+      "Bash(rm -rf app/ settings/ setup/ lib/ icons/ dist/ node_modules/ electron/ docs/)"
     ]
   }
 }
