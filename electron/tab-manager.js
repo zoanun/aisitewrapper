@@ -16,9 +16,28 @@ class TabManager {
     this.tabs = [];       // { id, siteId, title, url, view }
     this.activeTabId = null;
     this.nextId = 1;
+    this.welcomeView = null;
+  }
+
+  _showWelcome() {
+    if (this.welcomeView) return;
+    this.welcomeView = new WebContentsView({
+      webPreferences: { contextIsolation: true, nodeIntegration: false }
+    });
+    this._setBounds(this.welcomeView);
+    this.baseWindow.contentView.addChildView(this.welcomeView);
+    this.welcomeView.webContents.loadFile(path.join(__dirname, 'welcome', 'welcome.html'));
+  }
+
+  _hideWelcome() {
+    if (!this.welcomeView) return;
+    this.baseWindow.contentView.removeChildView(this.welcomeView);
+    this.welcomeView.webContents.close();
+    this.welcomeView = null;
   }
 
   createTab(siteId, name, url) {
+    this._hideWelcome();
     const tabId = 'tab_' + (this.nextId++);
     const view = new WebContentsView({
       webPreferences: {
@@ -111,6 +130,7 @@ class TabManager {
       } else {
         this.activeTabId = null;
         this._notifyUI('tab-switched', { tabId: null });
+        this._showWelcome();
       }
     }
 
@@ -135,13 +155,15 @@ class TabManager {
     for (const tab of this.tabs) {
       this._setBounds(tab.view);
     }
+    if (this.welcomeView) this._setBounds(this.welcomeView);
   }
 
   getSessionData() {
+    const contentTabs = this.tabs.filter(t => t.siteId !== '__settings__');
     return {
-      tabs: this.tabs.map(t => ({ siteId: t.siteId, url: t.url })),
+      tabs: contentTabs.map(t => ({ siteId: t.siteId, url: t.url })),
       activeTab: this.activeTabId
-        ? this.tabs.find(t => t.id === this.activeTabId)?.siteId || null
+        ? contentTabs.find(t => t.id === this.activeTabId)?.siteId || null
         : null
     };
   }
