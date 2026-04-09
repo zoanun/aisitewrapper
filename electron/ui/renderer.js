@@ -4,7 +4,37 @@ const settingsBtn = document.getElementById('settings-btn');
 const tabAddBtn = document.getElementById('tab-add');
 const pickerOverlay = document.getElementById('picker-overlay');
 const sitePicker = document.getElementById('site-picker');
+const scrollLeftBtn = document.getElementById('tab-scroll-left');
+const scrollRightBtn = document.getElementById('tab-scroll-right');
 let contextMenu = null;
+
+// --- Tab scroll buttons ---
+function updateScrollButtons() {
+  const hasOverflow = tabsContainer.scrollWidth > tabsContainer.clientWidth;
+  const atStart = tabsContainer.scrollLeft <= 0;
+  const atEnd = tabsContainer.scrollLeft + tabsContainer.clientWidth >= tabsContainer.scrollWidth - 1;
+
+  scrollLeftBtn.classList.toggle('visible', hasOverflow && !atStart);
+  scrollRightBtn.classList.toggle('visible', hasOverflow && !atEnd);
+}
+
+scrollLeftBtn.addEventListener('click', () => {
+  tabsContainer.scrollBy({ left: -150, behavior: 'smooth' });
+});
+
+scrollRightBtn.addEventListener('click', () => {
+  tabsContainer.scrollBy({ left: 150, behavior: 'smooth' });
+});
+
+tabsContainer.addEventListener('scroll', updateScrollButtons);
+
+// Mouse wheel horizontal scroll on tab bar
+tabsContainer.addEventListener('wheel', (e) => {
+  if (e.deltaY !== 0) {
+    e.preventDefault();
+    tabsContainer.scrollBy({ left: e.deltaY > 0 ? 80 : -80 });
+  }
+}, { passive: false });
 
 // --- Favicon helper ---
 function createFavicon(url, name, letterClass) {
@@ -88,6 +118,7 @@ function renderTabs(tabs, activeTabId) {
 
     tabsContainer.appendChild(el);
   }
+  updateScrollButtons();
 }
 
 // --- Site Picker (+ button) ---
