@@ -2,7 +2,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #1e1e1e;
+  background: #e8eaed;
   min-height: 68px;
   user-select: none;
 }
@@ -12,8 +12,9 @@ body {
   display: flex;
   align-items: center;
   height: 32px;
-  background: #1e1e1e;
+  background: #e8eaed;
   padding: 0 4px;
+  border-bottom: 1px solid #d0d0d0;
   -webkit-app-region: drag;
 }
 
@@ -34,7 +35,7 @@ body {
   gap: 4px;
   padding: 0 10px;
   height: 26px;
-  color: #999;
+  color: #555;
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
@@ -43,20 +44,20 @@ body {
   -webkit-app-region: no-drag;
 }
 
-.bookmark:hover { background: #2a2a2a; color: #ddd; }
+.bookmark:hover { background: #d4d6d9; color: #222; }
 
 .bookmark img { width: 14px; height: 14px; border-radius: 2px; }
 
 .bookmark .bk-letter {
   width: 14px; height: 14px; border-radius: 2px;
-  background: #444; color: #fff; font-size: 9px;
+  background: #b0b4b8; color: #fff; font-size: 9px;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
 .settings-btn {
   font-size: 16px;
-  color: #666;
+  color: #888;
   cursor: pointer;
   padding: 0 8px;
   height: 32px;
@@ -66,14 +67,14 @@ body {
   transition: color 0.12s;
 }
 
-.settings-btn:hover { color: #ddd; }
+.settings-btn:hover { color: #333; }
 
 /* === Tab Bar (36px) === */
 .tab-bar {
   display: flex;
   align-items: center;
   height: 36px;
-  background: #2a2a2a;
+  background: #dee1e6;
   padding: 0 4px;
 }
 
@@ -93,19 +94,20 @@ body {
   gap: 6px;
   padding: 0 12px;
   height: 36px;
-  color: #888;
+  color: #666;
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
   transition: background 0.12s, color 0.12s;
   position: relative;
   max-width: 200px;
 }
 
-.tab:hover { background: #333; color: #ccc; }
+.tab:hover { background: #eaecef; color: #333; }
 
-.tab.active { color: #fff; border-bottom-color: #4a9eff; }
+.tab.active { background: #fff; color: #222; border-bottom-color: #4a9eff; }
 
 .tab-title {
   overflow: hidden;
@@ -114,7 +116,7 @@ body {
 
 .tab-close {
   font-size: 14px;
-  color: #666;
+  color: #999;
   cursor: pointer;
   padding: 0 2px;
   border-radius: 3px;
@@ -122,7 +124,7 @@ body {
   flex-shrink: 0;
 }
 
-.tab-close:hover { background: #555; color: #fff; }
+.tab-close:hover { background: #ccc; color: #333; }
 
 .tab-scroll-btn {
   display: none;
@@ -130,7 +132,7 @@ body {
   justify-content: center;
   width: 20px;
   height: 28px;
-  color: #666;
+  color: #888;
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
@@ -138,7 +140,7 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 
-.tab-scroll-btn:hover { background: #3a3a3a; color: #ddd; }
+.tab-scroll-btn:hover { background: #d0d2d5; color: #333; }
 
 .tab-scroll-btn.visible { display: flex; }
 
@@ -148,7 +150,7 @@ body {
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #666;
+  color: #888;
   font-size: 18px;
   cursor: pointer;
   border-radius: 4px;
@@ -156,7 +158,7 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 
-.tab-add:hover { background: #3a3a3a; color: #ddd; }
+.tab-add:hover { background: #d0d2d5; color: #333; }
 
 /* === Site Picker (dropdown from + button) === */
 .site-picker-overlay {
@@ -164,22 +166,22 @@ body {
   position: fixed;
   inset: 0;
   z-index: 998;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.15);
 }
 
 .site-picker-overlay.show { display: block; }
 
 .site-picker {
   position: fixed;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #fff;
+  border: 1px solid #d0d0d0;
   border-radius: 8px;
   padding: 8px 0;
   min-width: 200px;
   max-height: 400px;
   overflow-y: auto;
   z-index: 999;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
 .site-picker-item {
@@ -187,19 +189,19 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  color: #ddd;
+  color: #333;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.1s;
 }
 
-.site-picker-item:hover { background: #3a3a3a; }
+.site-picker-item:hover { background: #f0f1f3; }
 
 .site-picker-item img { width: 16px; height: 16px; border-radius: 2px; }
 
 .site-picker-item .picker-letter {
   width: 16px; height: 16px; border-radius: 2px;
-  background: #444; color: #fff; font-size: 10px;
+  background: #b0b4b8; color: #fff; font-size: 10px;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -207,23 +209,23 @@ body {
 /* === Context Menu === */
 .context-menu {
   position: fixed;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #fff;
+  border: 1px solid #d0d0d0;
   border-radius: 6px;
   min-width: 140px;
   padding: 4px 0;
   z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .menu-item {
   padding: 8px 16px;
-  color: #ddd;
+  color: #333;
   font-size: 13px;
   cursor: pointer;
 }
 
-.menu-item:hover { background: #3a3a3a; }
+.menu-item:hover { background: #f0f1f3; }
 
 .menu-item.danger { color: #e74c3c; }
-.menu-item.danger:hover { background: #3a2020; }
+.menu-item.danger:hover { background: #fdf0ef; }
