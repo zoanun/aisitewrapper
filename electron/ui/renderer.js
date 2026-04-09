@@ -116,9 +116,10 @@ async function openPicker() {
   // Expand UI view to full window so dropdown is visible
   await window.electronAPI.expandUIView();
 
-  // Position picker below + button
+  // Position picker below + button, right-aligned
   const rect = tabAddBtn.getBoundingClientRect();
-  sitePicker.style.left = rect.left + 'px';
+  sitePicker.style.right = (window.innerWidth - rect.right) + 'px';
+  sitePicker.style.left = 'auto';
   sitePicker.style.top = rect.bottom + 'px';
   pickerOverlay.classList.add('show');
 }
